@@ -1,0 +1,47 @@
+project:
+  name: Projeto_Peixes_2026
+  seed: 42
+  num_classes: 6
+  classes:
+    - Anostomidae
+    - Characiformes
+    - Eggs
+    - Pimelodidae
+    - Prochilodontidae
+    - Siluriformes
+
+paths:
+  dataset_dir: DataSet
+  data_dir: data
+  log_dir: log
+
+split:
+  train: 0.70
+  val: 0.15
+  test: 0.15
+
+training:
+  epochs: 50
+  freeze_epochs: 5
+  criterion: cross_entropy
+  optimizer: SGD
+  momentum: 0.9
+  weight_decay: 0.0001
+  scheduler: cyclic_lr
+  base_lr: 0.0001
+  max_lr: 0.006
+  step_size_up: 5
+  mode: triangular2
+  monitor: val_balanced_accuracy
+  num_workers: 8
+
+bootstrap:
+  n_iterations: 1000
+  random_state: 42
+  metrics:
+    - accuracy
+    - f1_macro
+    - balanced_accuracy
+    - precision_macro
+    - recall_macro
+    - specificity_macro

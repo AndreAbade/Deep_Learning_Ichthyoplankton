@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# This repository publishes the benchmark pipeline only (Code availability).
+#
+# The policy is deny-by-default: everything at the repository root is ignored,
+# and only the pipeline code is re-included below. That keeps the 22 GB image
+# dataset, the 6.5 GB of checkpoints, and the manuscript sources out of the
+# repository by construction rather than by remembering to list them.
+# ---------------------------------------------------------------------------
+/*
+
+!/.gitignore
+!/LICENSE
+!/README.md
+!/requirements.txt
+!/rename_dataset.py
+!/src/
+!/configs/
+
+# Weights referenced by configs/models.yaml, required to run the benchmark.
+!/yolo26n-cls.pt
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------
+# Tooling and OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~

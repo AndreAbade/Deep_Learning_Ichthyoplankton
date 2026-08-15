@@ -1,0 +1,149 @@
+# (name, batch_size, height, width)
+cnn_models:
+  - name: DenseNet121
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: densenet121
+
+  - name: DenseNet201
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: densenet201
+
+  - name: VGG16
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: vgg16
+
+  - name: VGG19
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: vgg19
+
+  - name: ResNet50
+    batch_size: 100
+    input_size: [224, 224]
+    backend: torchvision
+    key: resnet50
+
+  - name: ResNet101
+    batch_size: 64
+    input_size: [224, 224]
+    backend: torchvision
+    key: resnet101
+
+  - name: ResNet152
+    batch_size: 64
+    input_size: [224, 224]
+    backend: torchvision
+    key: resnet152
+
+  - name: ResNeXt50
+    batch_size: 64
+    input_size: [224, 224]
+    backend: torchvision
+    key: resnext50_32x4d
+
+  - name: InceptionV3
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: inception_v3
+
+  - name: Xception
+    batch_size: 32
+    input_size: [224, 224]
+    backend: timm
+    key: xception
+
+  - name: InceptionResNetV2
+    batch_size: 32
+    input_size: [224, 224]
+    backend: timm
+    key: inception_resnet_v2
+
+  - name: NASNetLarge
+    batch_size: 32
+    input_size: [224, 224]
+    backend: timm
+    key: nasnetalarge
+
+  - name: MobileNetV2
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: mobilenet_v2
+
+  - name: MobileNetV3Large
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: mobilenet_v3_large
+
+  - name: EfficientNetV2B0
+    batch_size: 32
+    input_size: [224, 224]
+    backend: timm
+    key: tf_efficientnetv2_b0
+
+  - name: EfficientNetV2M
+    batch_size: 64
+    input_size: [224, 224]
+    backend: torchvision
+    key: efficientnet_v2_m
+
+  - name: NFNet
+    batch_size: 32
+    input_size: [224, 224]
+    backend: timm
+    key: eca_nfnet_l0
+
+  - name: ConvNeXt
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: convnext_tiny
+
+transformer_models:
+  - name: ViT_B_16
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: vit_b_16
+
+  - name: Swin_T
+    batch_size: 32
+    input_size: [224, 224]
+    backend: torchvision
+    key: swin_t
+
+yolo_models:
+  - name: YOLO26N_CLS
+    batch_size: 32
+    input_size: [224, 224]
+    backend: ultralytics
+    key: yolo26n-cls.pt
+
+model_families:
+  DenseNet121: DenseNet
+  DenseNet201: DenseNet
+  VGG16: VGG
+  VGG19: VGG
+  ResNet50: ResNet
+  ResNet101: ResNet
+  ResNet152: ResNet
+  ResNeXt50: ResNeXt
+  InceptionV3: Inception
+  InceptionResNetV2: Inception
+  Xception: Xception
+  NASNetLarge: NASNet
+  MobileNetV2: MobileNet
+  MobileNetV3Large: MobileNet
+  EfficientNetV2B0: EfficientNet
+  EfficientNetV2M: EfficientNet
+  NFNet: NFNet
+  ConvNeXt: ConvNeXt

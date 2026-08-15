@@ -1,0 +1,21 @@
+train:
+  random_affine:
+    degrees: 0
+    translate: [0.15, 0.15]
+  random_horizontal_flip:
+    p: 0.5
+  random_rotation:
+    degrees: 20
+  color_jitter:
+    brightness: 0.1
+    contrast: 0.2
+  random_resized_crop:
+    size: 224
+    scale: [0.9, 1.1]
+
+val_test:
+  resize: 256
+  center_crop: 224
+  normalize:
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
