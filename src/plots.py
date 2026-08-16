@@ -15,7 +15,7 @@ from sklearn.preprocessing import label_binarize
 
 from dataset import CLASSES
 
-FIG_DPI = 150
+FIG_DPI = 600
 
 # ── dark style constants (fig1) ──────────────────────────────────────────────
 _DARK_BG    = "#0d1117"
@@ -518,15 +518,18 @@ def plot_network_graph(mcnemar_csv: Path, out_dir: Path,
         G.add_edge(row["model_a"], row["model_b"],
                    p_value=float(row["p_value"]))
 
-    edge_colors = []
+    # Significance is encoded redundantly (hue + dash pattern + width) because
+    # hue alone is not distinguishable under red-green colour vision deficiency.
+    # Hues are from the Okabe-Ito colour-blind-safe palette.
+    edge_colors, edge_styles, edge_widths = [], [], []
     for u, v, data in G.edges(data=True):
         p = data["p_value"]
         if p < 0.001:
-            edge_colors.append("#e8524a")
+            edge_colors.append("#d55e00"); edge_styles.append("solid");  edge_widths.append(2.0)
         elif p < 0.05:
-            edge_colors.append("#f0a040")
+            edge_colors.append("#0072b2"); edge_styles.append("dashed"); edge_widths.append(1.5)
         else:
-            edge_colors.append("#add8e6")
+            edge_colors.append("#999999"); edge_styles.append("dotted"); edge_widths.append(0.8)
 
     node_colors = [_FAMILY_COLORS.get(_model_family(m, model_families), "#888888")
                    for m in models]
@@ -544,15 +547,15 @@ def plot_network_graph(mcnemar_csv: Path, out_dir: Path,
     nx.draw_networkx_nodes(G, pos, nodelist=models,
                            node_color=node_colors, node_size=node_sizes,
                            alpha=0.92, ax=ax)
-    nx.draw_networkx_edges(G, pos, edge_color=edge_colors,
-                           width=1.3, alpha=0.65, ax=ax)
+    nx.draw_networkx_edges(G, pos, edge_color=edge_colors, style=edge_styles,
+                           width=edge_widths, alpha=0.75, ax=ax)
     nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=6, ax=ax)
 
     # p-value edge legend
     edge_legend = [
-        Line2D([0], [0], color="#e8524a", lw=2.5, label="p < 0.001 (highly sig.)"),
-        Line2D([0], [0], color="#f0a040", lw=2.5, label="p < 0.05 (significant)"),
-        Line2D([0], [0], color="#add8e6", lw=2.5, label="p ≥ 0.05 (n.s.)"),
+        Line2D([0], [0], color="#d55e00", lw=2.5, ls="solid",  label="p < 0.001 (highly sig.)"),
+        Line2D([0], [0], color="#0072b2", lw=2.0, ls="dashed", label="p < 0.05 (significant)"),
+        Line2D([0], [0], color="#999999", lw=1.5, ls="dotted", label="p ≥ 0.05 (n.s.)"),
     ]
     # family node legend
     families_present = sorted({_model_family(m, model_families) for m in models})
@@ -954,8 +957,8 @@ def plot_learning_curves_grid(log_dir: Path, overfitting_csv: Path,
     for ax in axes[len(history_dirs):]:
         ax.set_visible(False)
 
-    fig.suptitle("Learning Curves per Model — Fit Diagnosis",
-                 fontsize=13, fontweight="bold", y=1.01)
+    # No figure title: Elsevier requires the caption's brief title not to be
+    # displayed on the artwork itself.
     plt.tight_layout()
     fig.savefig(out_dir / "learning_curves_grid.png",
                 dpi=FIG_DPI, bbox_inches="tight")
