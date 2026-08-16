@@ -816,6 +816,54 @@ def plot_parallel_coords(ranking_csv: Path, out_dir: Path,
 # Overfitting / underfitting visualisations
 # ──────────────────────────────────────────────────────────────────────────────
 
+def plot_coverage_curve(pred_dir: Path, out_dir: Path, model_name: str) -> dict:
+    """Selective classification: accuracy as a function of coverage.
+
+    Ranks test predictions by their maximum class probability and reports the
+    accuracy attainable if the least confident fraction is deferred to a
+    specialist. This is what an abstain-and-escalate workflow would deliver,
+    measured on predictions that already exist; nothing is retrained.
+    """
+    y_true = np.load(pred_dir / "y_true.npy")
+    y_pred = np.load(pred_dir / "y_pred.npy")
+    y_prob = np.load(pred_dir / "y_prob.npy")
+
+    conf = y_prob.max(axis=1)
+    correct = (y_true == y_pred)[np.argsort(-conf)]
+    n = len(correct)
+
+    cov = np.arange(1, n + 1) / n
+    acc = np.cumsum(correct) / np.arange(1, n + 1)
+    first_error = int(np.argmax(np.cumsum(~correct) > 0))
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    ax.plot(cov * 100, acc * 100, color="#1f77b4", lw=2.2)
+    ax.axhline(acc[-1] * 100, color="#888888", ls=":", lw=1.2)
+    ax.annotate(f"full coverage: {acc[-1] * 100:.2f}%",
+                xy=(100, acc[-1] * 100), xytext=(-6, -14),
+                textcoords="offset points", ha="right", fontsize=9, color="#555555")
+    ax.axvline(first_error / n * 100, color="#d55e00", ls="--", lw=1.4)
+    ax.annotate(f"error-free up to {first_error / n * 100:.1f}% coverage",
+                xy=(first_error / n * 100, 99.0), xytext=(8, 0),
+                textcoords="offset points", fontsize=9, color="#d55e00")
+
+    ax.set_xlabel("Coverage (% of test specimens classified automatically)")
+    ax.set_ylabel("Accuracy on the accepted subset (%)")
+    ax.set_xlim(50, 100.5)
+    ax.set_ylim(min(98.0, acc[len(acc) // 2] * 100 - 0.5), 100.15)
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out_dir / "coverage_accuracy_curve.png", dpi=FIG_DPI)
+    plt.close(fig)
+
+    rows = {}
+    for c in (1.00, 0.99, 0.98, 0.97, 0.95, 0.90, 0.85):
+        k = int(round(c * n))
+        rows[c] = (k, float(correct[:k].mean()), int((~correct[:k]).sum()))
+    return {"model": model_name, "n": n, "error_free_coverage": first_error / n,
+            "table": rows}
+
+
 def plot_fit_scatter(overfitting_csv: Path, out_dir: Path) -> None:
     from adjustText import adjust_text
 
