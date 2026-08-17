@@ -45,3 +45,4 @@ bootstrap:
     - precision_macro
     - recall_macro
     - specificity_macro
+    - macro_auc

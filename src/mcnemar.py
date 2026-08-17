@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from statsmodels.stats.contingency_tables import mcnemar
+from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
 
 from plots import plot_mcnemar_heatmap, plot_network_graph
@@ -58,13 +59,25 @@ def run_mcnemar(log_dir: Path, out_dir: Path,
                 "statistic": round(result.statistic, 6),
                 "p_value": round(result.pvalue, 8),
                 "significant_0_05": result.pvalue < 0.05,
+                "_p_raw": float(result.pvalue),
             })
+
+    # Every model pair is tested, so the p-values need multiplicity control.
+    # Benjamini-Hochberg is applied to the unrounded p-values across the whole
+    # family of comparisons, which is the correction reported in the paper.
+    raw_p = [r.pop("_p_raw") for r in rows]
+    reject, p_adj, _, _ = multipletests(raw_p, alpha=0.05, method="fdr_bh")
+    for r, pa, rej in zip(rows, p_adj, reject):
+        r["p_value_fdr"] = round(float(pa), 8)
+        r["significant_fdr_0_05"] = bool(rej)
 
     ensure_dir(out_dir)
     out_csv = out_dir / "mcnemar_results.csv"
     df = pd.DataFrame(rows)
     df.to_csv(out_csv, index=False)
-    print(f"[McNemar] {len(df)} pairs saved to {out_csv}")
+    print(f"[McNemar] {len(df)} pairs saved to {out_csv} "
+          f"({int(df.significant_0_05.sum())} significant uncorrected, "
+          f"{int(df.significant_fdr_0_05.sum())} after FDR)")
 
     plot_mcnemar_heatmap(out_csv, out_dir)
     ranking_csv = out_dir / "ranking_models.csv"

@@ -24,7 +24,8 @@ def run_bootstrap(
 ) -> None:
     if metrics_to_eval is None:
         metrics_to_eval = ["accuracy", "f1_macro", "balanced_accuracy",
-                           "precision_macro", "recall_macro", "specificity_macro"]
+                           "precision_macro", "recall_macro", "specificity_macro",
+                           "macro_auc"]
 
     rng = np.random.default_rng(seed)
     rows = []
@@ -40,11 +41,16 @@ def run_bootstrap(
 
         y_true = np.load(y_true_path)
         y_pred = np.load(y_pred_path)
+        prob_path = pred_dir / "y_prob.npy"
+        # macro-AUC needs the probabilities; they must be resampled with the same
+        # indices as the labels, or the metric would be computed on a mismatch.
+        y_prob = np.load(prob_path) if prob_path.exists() else None
         n = len(y_true)
 
         for it in range(n_iterations):
             idx = rng.integers(0, n, size=n)
-            m = compute_metrics(y_true[idx], y_pred[idx])
+            m = compute_metrics(y_true[idx], y_pred[idx],
+                                y_prob=None if y_prob is None else y_prob[idx])
             row = {"model": model_dir.name, "iteration": it}
             for key in metrics_to_eval:
                 row[key] = m.get(key, np.nan)
@@ -64,7 +70,8 @@ def run_bootstrap(
     actual_csv  = ranking_csv if ranking_csv.exists() else None
 
     for metric in ["accuracy", "f1_macro", "balanced_accuracy",
-                   "precision_macro", "recall_macro", "specificity_macro"]:
+                   "precision_macro", "recall_macro", "specificity_macro",
+                   "macro_auc"]:
         if metric in df.columns:
             plot_bootstrap_heatmap(out_csv, metric, out_dir)
             plot_violin_bootstrap(out_csv, metric, out_dir,

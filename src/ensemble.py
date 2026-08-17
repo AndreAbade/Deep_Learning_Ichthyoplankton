@@ -26,18 +26,33 @@ CNN_NAMES = {
 }
 
 
-def select_top2_cnn(ranking_csv: Path, model_families: dict) -> tuple[str, str]:
-    df = pd.read_csv(ranking_csv)
-    cnn_df = df[df["model"].isin(CNN_NAMES)].reset_index(drop=True)
+def select_top2_cnn(log_dir: Path, model_families: dict) -> tuple[str, str]:
+    """Pick the two best CNNs from distinct families by VALIDATION accuracy.
+
+    Selection must never look at the test set: choosing members on test
+    performance and then reporting the ensemble's test score would make that
+    score an optimistic, in-sample estimate. The ranking is therefore taken
+    from each model's best-epoch validation metrics, not from ranking_models.csv
+    (which holds test metrics only).
+    """
+    candidates = []
+    for name in sorted(CNN_NAMES):
+        best = log_dir / name / "metrics" / "best_epoch_metrics.json"
+        if not best.exists():
+            continue  # not trained in this run
+        with open(best) as f:
+            val_ba = json.load(f).get("val_balanced_accuracy")
+        if val_ba is not None:
+            candidates.append((float(val_ba), name))
 
     selected = []
     used_families = set()
-    for _, row in cnn_df.iterrows():
-        m = row["model"]
+    for val_ba, m in sorted(candidates, reverse=True):
         fam = model_families.get(m, m)
         if fam not in used_families:
             selected.append(m)
             used_families.add(fam)
+            print(f"[Ensemble] {m}: val_balanced_accuracy = {val_ba:.4f}")
         if len(selected) == 2:
             break
 
@@ -49,7 +64,9 @@ def select_top2_cnn(ranking_csv: Path, model_families: dict) -> tuple[str, str]:
 
 
 def build_ensemble(log_dir: Path, ranking_csv: Path, model_families: dict) -> None:
-    m1, m2 = select_top2_cnn(ranking_csv, model_families)
+    # ranking_csv is kept in the signature for call-site compatibility but is
+    # deliberately unused: selection is validation-based (see select_top2_cnn).
+    m1, m2 = select_top2_cnn(log_dir, model_families)
 
     y_prob1 = np.load(log_dir / m1 / "predictions" / "y_prob.npy")
     y_prob2 = np.load(log_dir / m2 / "predictions" / "y_prob.npy")
