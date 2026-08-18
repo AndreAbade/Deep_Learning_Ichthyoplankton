@@ -453,7 +453,9 @@ def plot_mcnemar_heatmap(mcnemar_csv: Path, out_dir: Path) -> None:
 
     for _, row in df.iterrows():
         i, j = idx[row["model_a"]], idx[row["model_b"]]
-        val  = -np.log10(float(row["p_value"]) + 1e-300)
+        # FDR-adjusted p, matching the inference reported in the paper; using
+        # the raw p here would show ten pairs as significant that are not.
+        val  = -np.log10(float(row["p_value_fdr"]) + 1e-300)
         mat[i, j] = val
         mat[j, i] = val
 
@@ -516,7 +518,7 @@ def plot_network_graph(mcnemar_csv: Path, out_dir: Path,
     G.add_nodes_from(models)
     for _, row in df.iterrows():
         G.add_edge(row["model_a"], row["model_b"],
-                   p_value=float(row["p_value"]))
+                   p_value=float(row["p_value_fdr"]))
 
     # Significance is encoded redundantly (hue + dash pattern + width) because
     # hue alone is not distinguishable under red-green colour vision deficiency.
