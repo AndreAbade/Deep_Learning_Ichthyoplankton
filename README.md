@@ -50,7 +50,7 @@ DataSet/
 
 **YOLO (1)**: YOLO26N-CLS
 
-**Ensemble (1)**: mean of the class probabilities of the top-2 CNNs from distinct architecture families, selected automatically by validation balanced accuracy. In the current run this resolved to DenseNet201 + MobileNetV3-Large.
+**Ensemble (1)**: mean of the class probabilities of the top-2 CNNs from distinct architecture families, selected automatically by validation balanced accuracy. In the current run this resolves to **DenseNet121 + MobileNetV3-Large**. Selection uses validation performance only, never the test set.
 
 Backbones come from `torchvision`, `timm`, or `ultralytics`, dispatched by a single factory in `src/models.py`.
 
@@ -58,16 +58,25 @@ Backbones come from `torchvision`, `timm`, or `ultralytics`, dispatched by a sin
 
 ## Results
 
-Held-out test set (n = 1,455), ranked by macro-F1. Running the pipeline regenerates the full table at `log/global_results/ranking_models.csv`, along with every figure and statistical test reported below.
+### Primary result — all models under the shared protocol
+
+Held-out test set (n = 1,455), ranked by macro-F1. Every model below is trained under the shared
+augmentation pipeline (`configs/augmentations.yaml`) and the same epoch budget, input resolution and
+learning-rate endpoints, so the numbers are mutually comparable. Running the pipeline regenerates the
+full table at `log/global_results/ranking_models.csv`, along with every figure and statistical test.
 
 | # | Model | Accuracy | Macro-F1 | Balanced acc. | Macro-AUC |
 |---:|---|---:|---:|---:|---:|
-| 1 | YOLO26N-CLS | 0.9856 | 0.9856 | 0.9855 | 0.9997 |
-| 2 | Ensemble (DenseNet201 + MobileNetV3-Large) | 0.9677 | 0.9675 | 0.9676 | 0.9990 |
-| 3 | DenseNet201 | 0.9643 | 0.9641 | 0.9641 | 0.9987 |
-| 4 | MobileNetV3-Large | 0.9622 | 0.9620 | 0.9620 | 0.9989 |
-| 5 | ResNet152 | 0.9601 | 0.9600 | 0.9600 | 0.9980 |
+| 1 | **Ensemble (DenseNet121 + MobileNetV3-Large)** | **0.9684** | **0.9682** | **0.9682** | **0.9990** |
+| 2 | DenseNet201 | 0.9643 | 0.9641 | 0.9641 | 0.9987 |
+| 3 | MobileNetV3-Large | 0.9622 | 0.9620 | 0.9620 | 0.9989 |
+| 4 | ResNet152 | 0.9601 | 0.9600 | 0.9600 | 0.9980 |
+| 5 | ResNet50 | 0.9588 | 0.9586 | 0.9586 | 0.9979 |
+| 6 | NFNet (eca_nfnet_l0) | 0.9588 | 0.9584 | 0.9586 | 0.9986 |
+| 7 | DenseNet121 | 0.9567 | 0.9565 | 0.9565 | 0.9983 |
 | … | … | … | … | … | … |
+| 18 | InceptionV3 | 0.9381 | 0.9375 | 0.9379 | 0.9957 |
+| 19 | **YOLO26N-CLS** (augmentation harmonised) | **0.9340** | **0.9338** | **0.9338** | **0.9952** |
 | 20 | VGG19 | 0.9251 | 0.9240 | 0.9247 | 0.9943 |
 | 21 | Swin-T | 0.9244 | 0.9232 | 0.9240 | 0.9946 |
 | 22 | VGG16 | 0.9223 | 0.9211 | 0.9220 | 0.9939 |
@@ -75,9 +84,33 @@ Held-out test set (n = 1,455), ranked by macro-F1. Running the pipeline regenera
 Notes on reading this table:
 
 - **Every model exceeded 92% accuracy.** The field is tightly clustered, which is exactly why the pipeline reports bootstrap confidence intervals and pairwise McNemar tests rather than raw rankings alone.
-- **The YOLO result is stated as models-as-configured.** Its augmentation, epoch budget, input resolution, and learning-rate endpoints were matched to the other models, but its optimizer, learning-rate schedule shape, and freeze phase come from the Ultralytics training recipe and differ from the shared two-phase protocol. That residual difference is a real caveat, not a null one.
-- **Accuracy tracked efficiency rather than opposing it.** The two smallest models placed first and fourth, ahead of much larger backbones.
-- **The ensemble did not beat the best single model**, so its added inference cost is hard to justify here.
+- **The leader is not statistically separated from the models behind it.** The ensemble does not differ significantly from DenseNet201 (p = 0.42), MobileNetV3-Large (p = 0.14), ResNet152 (p = 0.16) or NFNet (p = 0.07). Read the upper table as a tie, not a ranking.
+- **Size and accuracy are not significantly associated** (Spearman ρ = −0.26, p = 0.26). MobileNetV3-Large at 5.5 M parameters ranking third, ahead of backbones 10–16× larger, is the clearest efficiency result here — but the smallest architecture in the field ranks nineteenth, so "smaller is better" is not supported.
+- **The two-tier structure that is firmly established** is the upper group against the trailing group (VGG16, Swin-T, VGG19). After FDR correction, 106 of 231 pairwise McNemar tests remain significant (116 uncorrected).
+
+### Secondary analysis — sensitivity to the training recipe
+
+`YOLO26N_CLS` is the one model whose native framework (Ultralytics) exposes a different and narrower
+augmentation API than the shared `torchvision` pipeline. We report both configurations, and the
+contrast is a result in its own right:
+
+| Configuration | Accuracy | Macro-F1 | Rank | Status |
+|---|---:|---:|---:|---|
+| Augmentation harmonised to the shared pipeline | 0.9340 | 0.9338 | 19 of 22 | **primary** — the comparable number |
+| Ultralytics defaults (crop 0.5–1.0, RandAugment, random erasing, HSV jitter) | 0.9856 | 0.9856 | 1 of 22 | **sensitivity analysis only** — not comparable |
+
+Epoch budget, input resolution and learning-rate endpoints are identical in both runs, so the
+5.2-percentage-point gap is attributable to the augmentation regime rather than to the architecture.
+
+Two caveats on the harmonised run, stated precisely:
+
+- Harmonisation is **partial**. Crop range, flips, RandAugment, erasing and colour jitter were matched; two shared operations, random rotation (20°) and affine translation (0.15), cannot be expressed through the Ultralytics classification API and remain unmatched in the opposite direction.
+- The framework's default optimizer, learning-rate schedule shape and absence of an explicit freeze phase are still unmatched. Its nineteenth place is therefore a property of the model as configured, exactly as its earlier first place was.
+
+An earlier version of this repository reported the 0.9856 run as the headline result. It is retained
+above as a sensitivity analysis because the comparison is informative: statistical testing did not
+detect this confound — the earlier result was significant after FDR correction and still misleading
+as an architectural claim — whereas matching the training recipe did.
 
 ### Statistical analysis
 
@@ -216,6 +249,26 @@ GPU nondeterminism in some cuDNN kernels means metrics can differ in the last de
 This repository is the code availability companion to the manuscript *"Comparative Evaluation of Deep Learning Architectures for Classifying Neotropical Freshwater Ichthyoplankton in Stereomicroscopy Images"*, submitted to *Ecological Informatics* (Elsevier). It contains the benchmark pipeline: training, evaluation, bootstrap, and McNemar analysis.
 
 The manuscript text, its figures, and the image dataset are not distributed here. For access to the imaged material, contact the corresponding author.
+
+### Which version of this code produced the reported results
+
+The results in the manuscript, and in [Results](#results) above, were produced by the commit tagged
+**`v2.0-matched-augmentation`**. Use that tag rather than the branch tip when reproducing the paper:
+
+```bash
+git clone https://github.com/AndreAbade/Deep_Learning_Ichthyoplankton.git
+cd Deep_Learning_Ichthyoplankton
+git checkout v2.0-matched-augmentation
+```
+
+| Tag | What it corresponds to |
+|---|---|
+| `v2.0-matched-augmentation` | **Current.** All 21 architectures under the shared augmentation pipeline. Leading model: the DenseNet121 + MobileNetV3-Large ensemble at 0.9684. `YOLO26N_CLS` is nineteenth at 0.9340. |
+| `v1.0-ultralytics-defaults` | Superseded. `YOLO26N_CLS` trained on the Ultralytics default augmentation and reported as the headline result at 0.9856. Retained so the sensitivity analysis in [Results](#results) can be reproduced; **not** the configuration the manuscript's primary results come from. |
+
+Only `src/yolo_runner.py` (the augmentation settings) and `src/scale_robustness.py` (which model the
+probe follows) differ between the two tags. No other model was retrained, and every other model's
+metrics are identical across both.
 
 ---
 
