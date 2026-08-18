@@ -45,6 +45,25 @@ def train_yolo(model_cfg: dict, config: dict, base_dir: Path) -> None:
         momentum=tc["momentum"],
         weight_decay=tc["weight_decay"],
         patience=0,  # disabled — fixed epochs for fair comparison
+        # Augmentation matched to the shared torchvision pipeline (see
+        # configs/augmentations.yaml) as closely as the Ultralytics
+        # classification API allows. Left at their defaults, these settings gave
+        # YOLO a materially stronger regime than the other models: crop area
+        # 0.5-1.0 plus RandAugment and random erasing, none of which the shared
+        # pipeline applies.
+        scale=0.1,          # -> RandomResizedCrop area (0.9, 1.0); shared: [0.9, 1.1]
+        fliplr=0.5,         # exact match
+        flipud=0.0,         # exact match (no vertical flip in either)
+        auto_augment=None,  # off: RandAugment is not in the shared pipeline
+        erasing=0.0,        # off: random erasing is not in the shared pipeline
+        hsv_h=0.0,          # off: no hue jitter in the shared pipeline
+        hsv_s=0.0,          # off: no saturation jitter in the shared pipeline
+        # ColorJitter here ties brightness and contrast to one value; the shared
+        # pipeline uses 0.1 and 0.2, so 0.15 is the closest single setting.
+        hsv_v=0.15,
+        # Not expressible through this API, and therefore still unmatched:
+        # RandomRotation(20 deg) and RandomAffine(translate=0.15), which the
+        # other twenty models do receive.
         project=str(log_dir / "ultralytics_run"),
         name="train",
         exist_ok=True,
