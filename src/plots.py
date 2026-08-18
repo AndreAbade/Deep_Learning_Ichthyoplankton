@@ -866,6 +866,37 @@ def plot_coverage_curve(pred_dir: Path, out_dir: Path, model_name: str) -> dict:
             "table": rows}
 
 
+def plot_risk_coverage_curve(conf, correct, policy_rows, out_dir: Path) -> Path:
+    """Risk against coverage on the test set, with the validated operating points.
+
+    The curve itself is descriptive. The markers are the policy: each threshold
+    was chosen on validation and applied here once, so they are the points a
+    deployment could actually adopt (see abstention.py).
+    """
+    order = np.argsort(-np.asarray(conf))
+    c = np.asarray(correct)[order]
+    cov = np.arange(1, len(c) + 1) / len(c)
+    risk = np.cumsum(~c) / np.arange(1, len(c) + 1)
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    ax.plot(cov * 100, risk * 100, color="#1f77b4", lw=2.2, label="risk-coverage (test)")
+    for row, colour in zip(policy_rows, ["#d55e00", "#009e73", "#cc79a7", "#999999"]):
+        ax.plot(row["test_coverage"] * 100, row["test_risk"] * 100, "o", color=colour, ms=8,
+                label=f"policy, {row['target']:.0%} target: "
+                      f"{row['test_coverage']:.1%} cov, {row['test_risk']:.2%} risk")
+    ax.set_xlabel("Coverage (% of test images classified automatically)")
+    ax.set_ylabel("Selective risk on the accepted subset (%)")
+    ax.set_xlim(40, 101)
+    ax.set_ylim(-0.15, max(4.0, float(risk.max()) * 100 * 1.1))
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=8.5, loc="upper left")
+    fig.tight_layout()
+    out = out_dir / "risk_coverage_curve.png"
+    fig.savefig(out, dpi=FIG_DPI)
+    plt.close(fig)
+    return out
+
+
 def plot_fit_scatter(overfitting_csv: Path, out_dir: Path) -> None:
     from adjustText import adjust_text
 
