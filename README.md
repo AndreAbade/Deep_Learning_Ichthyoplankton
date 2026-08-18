@@ -88,29 +88,22 @@ Notes on reading this table:
 - **Size and accuracy are not significantly associated** (Spearman ρ = −0.26, p = 0.26). MobileNetV3-Large at 5.5 M parameters ranking third, ahead of backbones 10–16× larger, is the clearest efficiency result here — but the smallest architecture in the field ranks nineteenth, so "smaller is better" is not supported.
 - **The two-tier structure that is firmly established** is the upper group against the trailing group (VGG16, Swin-T, VGG19). After FDR correction, 106 of 231 pairwise McNemar tests remain significant (116 uncorrected).
 
-### Secondary analysis — sensitivity to the training recipe
+### A note on `YOLO26N_CLS`
 
 `YOLO26N_CLS` is the one model whose native framework (Ultralytics) exposes a different and narrower
-augmentation API than the shared `torchvision` pipeline. We report both configurations, and the
-contrast is a result in its own right:
+augmentation API than the shared `torchvision` pipeline, and whose defaults are considerably stronger
+(crop area 0.5–1.0, RandAugment, random erasing, HSV jitter). Its augmentation is therefore
+harmonised with `configs/augmentations.yaml` in `src/yolo_runner.py` so that its result is comparable
+with the other twenty models.
 
-| Configuration | Accuracy | Macro-F1 | Rank | Status |
-|---|---:|---:|---:|---|
-| Augmentation harmonised to the shared pipeline | 0.9340 | 0.9338 | 19 of 22 | **primary** — the comparable number |
-| Ultralytics defaults (crop 0.5–1.0, RandAugment, random erasing, HSV jitter) | 0.9856 | 0.9856 | 1 of 22 | **sensitivity analysis only** — not comparable |
+Harmonisation is **partial**, and the limits are worth stating for anyone reusing this pipeline:
 
-Epoch budget, input resolution and learning-rate endpoints are identical in both runs, so the
-5.2-percentage-point gap is attributable to the augmentation regime rather than to the architecture.
+- Crop range, flips, RandAugment, erasing and colour jitter are matched. Two shared operations, random rotation (20°) and affine translation (0.15), cannot be expressed through the Ultralytics classification API and remain unmatched in the opposite direction.
+- The framework's default optimizer, learning-rate schedule shape and absence of an explicit freeze phase are also unmatched. Its result is a property of the model as configured.
 
-Two caveats on the harmonised run, stated precisely:
-
-- Harmonisation is **partial**. Crop range, flips, RandAugment, erasing and colour jitter were matched; two shared operations, random rotation (20°) and affine translation (0.15), cannot be expressed through the Ultralytics classification API and remain unmatched in the opposite direction.
-- The framework's default optimizer, learning-rate schedule shape and absence of an explicit freeze phase are still unmatched. Its nineteenth place is therefore a property of the model as configured, exactly as its earlier first place was.
-
-An earlier version of this repository reported the 0.9856 run as the headline result. It is retained
-above as a sensitivity analysis because the comparison is informative: statistical testing did not
-detect this confound — the earlier result was significant after FDR correction and still misleading
-as an architectural claim — whereas matching the training recipe did.
+The augmentation settings dominate this model's score, so change them only deliberately. Release
+`v1.0-ultralytics-defaults` is the same pipeline with those defaults left in place, kept for anyone
+who wants to measure that effect themselves.
 
 ### Statistical analysis
 
@@ -263,12 +256,12 @@ git checkout v2.0-matched-augmentation
 
 | Tag | What it corresponds to |
 |---|---|
-| `v2.0-matched-augmentation` | **Current.** All 21 architectures under the shared augmentation pipeline. Leading model: the DenseNet121 + MobileNetV3-Large ensemble at 0.9684. `YOLO26N_CLS` is nineteenth at 0.9340. |
-| `v1.0-ultralytics-defaults` | Superseded. `YOLO26N_CLS` trained on the Ultralytics default augmentation and reported as the headline result at 0.9856. Retained so the sensitivity analysis in [Results](#results) can be reproduced; **not** the configuration the manuscript's primary results come from. |
+| `v2.0-matched-augmentation` | **Current.** All 21 architectures under the shared augmentation pipeline. Leading model: the DenseNet121 + MobileNetV3-Large ensemble at 0.9684. This is the release the manuscript's results come from. |
+| `v1.0-ultralytics-defaults` | The same pipeline with `YOLO26N_CLS` left on the Ultralytics default augmentation instead of the shared one. Kept so that the effect of the augmentation settings can be measured directly; not a comparable benchmark configuration. |
 
-Only `src/yolo_runner.py` (the augmentation settings) and `src/scale_robustness.py` (which model the
-probe follows) differ between the two tags. No other model was retrained, and every other model's
-metrics are identical across both.
+The two releases differ only in `src/yolo_runner.py` (the augmentation settings) and
+`src/scale_robustness.py` (which model the probe follows); every other model's metrics are identical
+across both.
 
 ---
 
